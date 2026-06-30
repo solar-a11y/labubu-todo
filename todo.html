@@ -1,0 +1,534 @@
+<title>할 일 목록</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F5F0FF;
+    --surface: #FFFFFF;
+    --border: #E2D9F5;
+    --text: #1E1535;
+    --muted: #7B6B9D;
+    --accent: #7C5CFC;
+    --accent-light: #EDE8FF;
+    --accent-hover: #6A48EE;
+    --urgent: #DC2626;
+    --urgent-bg: #FEF2F2;
+    --done-text: #B0A8C8;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 14px rgba(100,80,180,0.09);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 12px rgba(100,80,180,0.07);
+  }
+  .header-inner {
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-text { flex: 1; }
+  .app-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .app-title span { color: var(--accent); }
+  .app-sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 500;
+  }
+  .count-pill {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-variant-numeric: tabular-nums;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+    display: none;
+  }
+
+  /* ── Labubu ── */
+  .labubu-wrap {
+    flex-shrink: 0;
+    cursor: default;
+    user-select: none;
+  }
+  .labubu-wrap:active svg { transform: scale(0.92) rotate(-5deg); }
+  .labubu-wrap svg { transition: transform 0.15s cubic-bezier(.34,1.56,.64,1); display: block; }
+  .labubu-wrap:hover svg { transform: scale(1.1) rotate(4deg); }
+
+  /* ── Main container ── */
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 18px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── Add form ── */
+  .add-form {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--border);
+  }
+  .input-row { display: flex; gap: 8px; align-items: center; }
+  .task-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .task-input:focus { border-color: var(--accent); background: #fff; }
+  .task-input::placeholder { color: var(--muted); }
+
+  .date-row { display: flex; gap: 8px; align-items: center; }
+  .date-label { font-size: 13px; color: var(--muted); white-space: nowrap; font-weight: 500; }
+  .date-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+    font-variant-numeric: tabular-nums;
+  }
+  .date-input:focus { border-color: var(--accent); background: #fff; }
+
+  .add-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 11px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .add-btn:hover { background: var(--accent-hover); }
+  .add-btn:active { transform: scale(0.96); }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex;
+    gap: 8px;
+  }
+  .stat-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px 8px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--text);
+  }
+  .stat-card.remaining .stat-num { color: #DC2626; }
+  .stat-card.completed .stat-num { color: #9CA3AF; }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Filter tabs ── */
+  .filter-row { display: flex; gap: 6px; align-items: center; }
+  .filter-btn {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .filter-btn:not(.active):hover { border-color: var(--accent); color: var(--accent); }
+
+  .clear-btn {
+    margin-left: auto;
+    border: 1.5px solid #FCA5A5;
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--urgent);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: none;
+  }
+  .clear-btn.visible { display: block; }
+  .clear-btn:hover { background: var(--urgent-bg); border-color: var(--urgent); }
+
+  /* ── Task list ── */
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .task-item {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: 1px solid var(--border);
+    animation: slideIn 0.22s cubic-bezier(.34,1.4,.64,1);
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .task-item.done { opacity: 0.55; }
+
+  .checkbox-wrap { flex-shrink: 0; margin-top: 1px; }
+  .checkbox-wrap input[type="checkbox"] { display: none; }
+  .check-box {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .check-box:hover { border-color: var(--accent); }
+  .check-box svg { display: none; width: 13px; height: 13px; }
+  .task-item.done .check-box { background: var(--accent); border-color: var(--accent); }
+  .task-item.done .check-box svg { display: block; }
+
+  .task-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .task-title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.4; word-break: break-word; }
+  .task-item.done .task-title { text-decoration: line-through; color: var(--done-text); }
+
+  .task-meta { display: flex; align-items: center; gap: 6px; }
+  .due-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 500;
+    padding: 3px 8px; border-radius: 6px;
+    background: var(--bg); color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .due-chip svg { flex-shrink: 0; }
+  .due-chip.urgent { background: var(--urgent-bg); color: var(--urgent); font-weight: 700; }
+  .due-chip.today  { background: #FFF7ED; color: #C2410C; font-weight: 700; }
+  .due-chip.overdue{ background: var(--urgent-bg); color: var(--urgent); font-weight: 700; text-decoration: line-through; }
+  .task-item.done .due-chip {
+    opacity: 0.4; background: var(--bg) !important;
+    color: var(--muted) !important; text-decoration: none !important; font-weight: 500 !important;
+  }
+
+  .delete-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--border); padding: 2px; border-radius: 6px;
+    flex-shrink: 0; transition: color 0.15s, background 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .delete-btn:hover { color: var(--urgent); background: var(--urgent-bg); }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 40px 24px; color: var(--muted); }
+  .empty-labubu { margin: 0 auto 14px; opacity: 0.6; width: fit-content; }
+  .empty h3 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .empty p { font-size: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .task-item, .labubu-wrap svg { animation: none; transition: none !important; }
+  }
+</style>
+
+<header class="header">
+  <div class="header-inner">
+
+    <!-- Labubu character -->
+    <div class="labubu-wrap" title="라부부가 응원해요!">
+      <svg viewBox="0 0 82 96" width="62" height="62" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 6 Ears -->
+        <!-- Ear 1 far-left -->
+        <ellipse cx="13" cy="33" rx="7.5" ry="13" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(-38 13 33)"/>
+        <ellipse cx="13" cy="33" rx="3.2" ry="7.5" fill="#F0AABB" opacity="0.75" transform="rotate(-38 13 33)"/>
+        <!-- Ear 2 -->
+        <ellipse cx="24" cy="20" rx="7" ry="13.5" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(-18 24 20)"/>
+        <ellipse cx="24" cy="20" rx="3" ry="7.5" fill="#F0AABB" opacity="0.75" transform="rotate(-18 24 20)"/>
+        <!-- Ear 3 center-left -->
+        <ellipse cx="36" cy="14" rx="6.5" ry="13" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(-4 36 14)"/>
+        <ellipse cx="36" cy="14" rx="2.8" ry="7.2" fill="#F0AABB" opacity="0.75" transform="rotate(-4 36 14)"/>
+        <!-- Ear 4 center-right -->
+        <ellipse cx="48" cy="14" rx="6.5" ry="13" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(4 48 14)"/>
+        <ellipse cx="48" cy="14" rx="2.8" ry="7.2" fill="#F0AABB" opacity="0.75" transform="rotate(4 48 14)"/>
+        <!-- Ear 5 -->
+        <ellipse cx="60" cy="20" rx="7" ry="13.5" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(18 60 20)"/>
+        <ellipse cx="60" cy="20" rx="3" ry="7.5" fill="#F0AABB" opacity="0.75" transform="rotate(18 60 20)"/>
+        <!-- Ear 6 far-right -->
+        <ellipse cx="71" cy="33" rx="7.5" ry="13" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.4" transform="rotate(38 71 33)"/>
+        <ellipse cx="71" cy="33" rx="3.2" ry="7.5" fill="#F0AABB" opacity="0.75" transform="rotate(38 71 33)"/>
+
+        <!-- Head -->
+        <circle cx="41" cy="60" r="30" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.6"/>
+
+        <!-- Left eye white -->
+        <ellipse cx="30" cy="55" rx="8.5" ry="9.5" fill="white" stroke="#7A5030" stroke-width="1"/>
+        <!-- Left pupil -->
+        <ellipse cx="31" cy="56.5" rx="5.5" ry="6.5" fill="#1A0800"/>
+        <!-- Left iris shimmer -->
+        <ellipse cx="29.5" cy="54" rx="2.2" ry="2.8" fill="#3A1800" opacity="0.6"/>
+        <!-- Left shine -->
+        <circle cx="33" cy="52.5" r="2" fill="white"/>
+        <circle cx="29" cy="58.5" r="1" fill="white" opacity="0.6"/>
+
+        <!-- Right eye white -->
+        <ellipse cx="52" cy="55" rx="8.5" ry="9.5" fill="white" stroke="#7A5030" stroke-width="1"/>
+        <!-- Right pupil -->
+        <ellipse cx="53" cy="56.5" rx="5.5" ry="6.5" fill="#1A0800"/>
+        <!-- Right iris shimmer -->
+        <ellipse cx="51.5" cy="54" rx="2.2" ry="2.8" fill="#3A1800" opacity="0.6"/>
+        <!-- Right shine -->
+        <circle cx="55" cy="52.5" r="2" fill="white"/>
+        <circle cx="51" cy="58.5" r="1" fill="white" opacity="0.6"/>
+
+        <!-- Nose -->
+        <ellipse cx="41" cy="65.5" rx="3.5" ry="2.5" fill="#E07888"/>
+
+        <!-- Mouth area -->
+        <path d="M29 70 Q41 82 53 70" fill="#C87888" stroke="#A05060" stroke-width="1.2" stroke-linejoin="round"/>
+        <!-- Fangy teeth (4 triangles) -->
+        <polygon points="33,70 31,77 36,70" fill="white"/>
+        <polygon points="38,70 36.5,76 41,70" fill="white"/>
+        <polygon points="44,70 41,76 45.5,70" fill="white"/>
+        <polygon points="49,70 46,77 51,70" fill="white"/>
+        <!-- Teeth dividers -->
+        <line x1="36" y1="70" x2="36" y2="76" stroke="#E8C0C8" stroke-width="0.8"/>
+        <line x1="41" y1="70" x2="41" y2="76" stroke="#E8C0C8" stroke-width="0.8"/>
+        <line x1="46" y1="70" x2="46" y2="76" stroke="#E8C0C8" stroke-width="0.8"/>
+
+        <!-- Blush cheeks -->
+        <ellipse cx="20" cy="64" rx="8" ry="5.5" fill="#F4A0BB" opacity="0.32"/>
+        <ellipse cx="62" cy="64" rx="8" ry="5.5" fill="#F4A0BB" opacity="0.32"/>
+
+        <!-- Small body/feet hint -->
+        <rect x="27" y="88" width="28" height="8" rx="4" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.2"/>
+        <ellipse cx="34" cy="93" rx="6" ry="4" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.2"/>
+        <ellipse cx="48" cy="93" rx="6" ry="4" fill="#F2DBCA" stroke="#9B7553" stroke-width="1.2"/>
+      </svg>
+    </div>
+
+    <div class="header-text">
+      <h1 class="app-title">할 일<span>.</span></h1>
+      <div class="app-sub">라부부와 함께 오늘도 파이팅!</div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Add form -->
+  <div class="add-form">
+    <div class="input-row">
+      <input class="task-input" id="taskInput" type="text" placeholder="새 할 일을 입력하세요…" maxlength="120" autocomplete="off">
+      <button class="add-btn" id="addBtn">추가</button>
+    </div>
+    <div class="date-row">
+      <span class="date-label">마감일</span>
+      <input class="date-input" id="dateInput" type="date">
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card total">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">전체</div>
+    </div>
+    <div class="stat-card remaining">
+      <div class="stat-num" id="statRemaining">0</div>
+      <div class="stat-label">남은 항목</div>
+    </div>
+    <div class="stat-card completed">
+      <div class="stat-num" id="statDone">0</div>
+      <div class="stat-label">완료</div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-row">
+    <button class="filter-btn active" data-filter="all">전체</button>
+    <button class="filter-btn" data-filter="active">진행 중</button>
+    <button class="filter-btn" data-filter="done">완료</button>
+    <button class="clear-btn" id="clearBtn">완료 삭제</button>
+  </div>
+
+  <!-- Task list -->
+  <div class="task-list" id="taskList"></div>
+</main>
+
+<script>
+  const STORAGE_KEY = 'todo_v1';
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let filter = 'all';
+
+  const taskInput     = document.getElementById('taskInput');
+  const dateInput     = document.getElementById('dateInput');
+  const taskList      = document.getElementById('taskList');
+  const statTotal     = document.getElementById('statTotal');
+  const statRemaining = document.getElementById('statRemaining');
+  const statDone      = document.getElementById('statDone');
+  const clearBtn      = document.getElementById('clearBtn');
+
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // 날짜 배지: daysUntil + formatDate + getDueInfo + calIcon 통합
+  function dueBadge(dateStr, isDone) {
+    if (!dateStr || isDone) return '';
+    const now = new Date(); now.setHours(0,0,0,0);
+    const days = Math.round((new Date(dateStr + 'T00:00:00') - now) / 86400000);
+    const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+    const [cls, text] =
+      days < 0  ? ['overdue', `${label} (만료)`]  :
+      days === 0 ? ['today',   '오늘 마감!']        :
+      days <= 2  ? ['urgent',  `${label} (D-${days})`] :
+                   ['',        `${label} (D-${days})`];
+    const c = cls === 'today' ? '#C2410C' : cls ? '#DC2626' : '#7B6B9D';
+    const icon = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="10" height="9" rx="1.5" stroke="${c}" stroke-width="1.4"/><path d="M4 1v2M8 1v2" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/><path d="M1 5h10" stroke="${c}" stroke-width="1.2"/></svg>`;
+    return `<span class="due-chip ${cls}">${icon}${text}</span>`;
+  }
+
+  function taskHTML(task) {
+    const badge = dueBadge(task.date, task.done);
+    return `
+      <div class="task-item ${task.done ? 'done' : ''}">
+        <label class="checkbox-wrap" title="${task.done ? '완료 취소' : '완료로 표시'}">
+          <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggle('${task.id}')">
+          <div class="check-box">
+            <svg viewBox="0 0 13 10" fill="none"><path d="M1.5 5L5 8.5L11.5 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </label>
+        <div class="task-content">
+          <div class="task-title">${escHtml(task.text)}</div>
+          ${badge ? `<div class="task-meta">${badge}</div>` : ''}
+        </div>
+        <button class="delete-btn" onclick="remove('${task.id}')" title="삭제" aria-label="삭제">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>`;
+  }
+
+  const EMPTY_MSGS = {
+    all:    ['아직 할 일이 없어요', '라부부가 기다리고 있어요!'],
+    active: ['진행 중인 할 일이 없어요', '모두 완료했거나 아직 추가하지 않았어요.'],
+    done:   ['완료된 항목이 없어요', '할 일을 완료하면 여기 표시돼요.'],
+  };
+
+  function render() {
+    const nDone = tasks.filter(t => t.done).length;
+    statTotal.textContent     = tasks.length;
+    statRemaining.textContent = tasks.length - nDone;
+    statDone.textContent      = nDone;
+    clearBtn.classList.toggle('visible', nDone > 0);
+
+    const filtered = tasks.filter(t =>
+      filter === 'active' ? !t.done : filter === 'done' ? t.done : true
+    );
+
+    if (!filtered.length) {
+      const [h, p] = EMPTY_MSGS[filter];
+      const svg = document.querySelector('.labubu-wrap svg').outerHTML;
+      taskList.innerHTML = `<div class="empty"><div class="empty-labubu">${svg}</div><h3>${h}</h3><p>${p}</p></div>`;
+      return;
+    }
+    taskList.innerHTML = filtered.map(taskHTML).join('');
+  }
+
+  function addTask() {
+    const text = taskInput.value.trim();
+    if (!text) { taskInput.focus(); return; }
+    tasks.unshift({ id: Date.now().toString(), text, date: dateInput.value, done: false });
+    save(); render();
+    taskInput.value = ''; dateInput.value = '';
+    taskInput.focus();
+  }
+
+  function toggle(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); render(); }
+  }
+
+  function remove(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    save(); render();
+  }
+
+  document.getElementById('addBtn').addEventListener('click', addTask);
+  clearBtn.addEventListener('click', () => { tasks = tasks.filter(t => !t.done); save(); render(); });
+  taskInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    });
+  });
+
+  render();
+</script>
